@@ -1,14 +1,21 @@
+# This
+
 dns:
+#  image: leftstache/discovery:latest
   image: xahrepap/dns:latest
-#  image: xahrepap/dns:works
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
   cap_add:
     - NET_ADMIN
   environment:
     DNS_USE_UPSTREAM: "true"
-    ZOOKEEPER_CONNECTION_STRING: "10.0.2.2:2181"
+    ZOOKEEPER_CONNECTION_STRING: "zookeeper:2181"
   ports:
     - "172.17.42.1:53:53/udp"
-  net: host
+  links:
+    - zookeeper
 
+zookeeper:
+  image: mesoscloud/zookeeper
+  environment:
+    MYID: 1
