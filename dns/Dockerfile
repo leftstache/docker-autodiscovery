@@ -1,4 +1,4 @@
-FROM xahrepap/base
+FROM leftstache/discovery-base
 
 ENV DNS_DOMAIN discovery
 ENV DNS_FORWARD_MAX 150
