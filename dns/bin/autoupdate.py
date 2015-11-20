@@ -3,13 +3,14 @@ import signal
 import sys
 import json
 import os
-import socket
+import time
 
 from kazoo.client import KazooClient
 
 import docker
 from docker.utils import kwargs_from_env
 
+AUTODISCOVER_TYPE_KEY = 'com.leftstache.autodiscover.type'
 BASE_PATH = "/autodiscover/services"
 
 
@@ -29,8 +30,15 @@ def main():
     with docker.Client(**kwargs) as dkr:
         register = Register(zk, dkr)
 
+        current_time = int(time.time() * 1000)
+
+        print("Looking for existing containers")
+        containers = dkr.containers(filters={"label": AUTODISCOVER_TYPE_KEY})
+        for container in containers:
+            register.on_started(container['Id'])
+
         print("Listening for Docker events")
-        for event_string in dkr.events():
+        for event_string in dkr.events(since=current_time):
             event = json.loads(event_string.decode("utf-8"))
             if 'status' in event:
                 if event['status'] == 'create':
@@ -75,23 +83,25 @@ class Register:
     def on_started(self, container_id):
         container = self.dkr.inspect_container(container_id)
         name = container['Name']
-        print("started: {} ({})".format(name[1:], container_id))
 
-        body_str = json.dumps(container)
+        container_config = container['Config']
+        labels = container_config['Labels']
 
-        created_path = self.zk.create("{}/service-".format(BASE_PATH), value=bytes(body_str, 'utf-8'), sequence=True, ephemeral=True, makepath=True)
-        self.started_containers[container_id] = created_path
-        print("subscribed: {} as {}".format(container_id, created_path))
+        if AUTODISCOVER_TYPE_KEY in labels:
+            print("subscribing: {} ({})".format(name, container_id[:6]))
+
+            body_str = json.dumps(container)
+
+            created_path = self.zk.create("{}/service-".format(BASE_PATH), value=bytes(body_str, 'utf-8'), sequence=True, ephemeral=True, makepath=True)
+            self.started_containers[container_id] = created_path
+            print("subscribed: {} ({}) as {}".format(name, container_id[:6], created_path))
 
     def on_destroyed(self, container_id):
-        print("died: {}".format(container_id))
-
         if container_id in self.started_containers:
-            container_zk_path = self.started_containers[container_id]
+            print("died: {}".format(container_id))
+            container_zk_path = self.started_containers.pop(container_id)
             self.zk.delete(container_zk_path, recursive=True)
-            print("unsubscribed: {}".format(container_id))
-        else:
-            print("ignoring: {}".format(container_id))
+            print("unsubscribed: {} ({})".format(container_id, container_zk_path))
 
 
 if __name__ == "__main__":
