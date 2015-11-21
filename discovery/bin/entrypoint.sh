@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 #myip="$(ifconfig | grep -oE "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" | head -1)"
-myip="$(ifconfig | grep -oE "172\.17\.[0-9]+\.[0-9]+" | head -1)"
+myip="$(ifconfig | grep -oE "172\.[0-9]+\.[0-9]+\.[0-9]+" | head -1)"
 
 echo "configuring dnsmasq"
 echo "	IP Address=${myip}"
