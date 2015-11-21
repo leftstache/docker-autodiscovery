@@ -23,7 +23,7 @@ def main():
     signal.signal(signal.SIGTERM, lambda s, f: on_sigterm(dnsmasq_process, zk, dkr))
 
     print("Starting Nginx")
-    nginx_process = subprocess.Popen(['nginx'], stdout=sys.stdout, stderr=sys.stderr)
+    nginx_process = subprocess.Popen(['nginx', '-g', 'daemon off;'], stdout=sys.stdout, stderr=sys.stderr)
 
     zookeeper_connection_string = os.environ['ZOOKEEPER_CONNECTION_STRING']
     print("Connecting to Zookeeper: {}".format(zookeeper_connection_string))
