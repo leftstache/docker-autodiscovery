@@ -19,7 +19,7 @@ BASE_PATH = "/autodiscover/services"
 
 def main():
     print("Starting Dnsmasq")
-    dnsmasq_process = subprocess.Popen(['dnsmasq', '-k', '--port=8053'], stdout=sys.stdout, stderr=sys.stderr)
+    dnsmasq_process = subprocess.Popen(['dnsmasq', '-k', '--port=53'], stdout=sys.stdout, stderr=sys.stderr)
     signal.signal(signal.SIGTERM, lambda s, f: on_sigterm(dnsmasq_process, zk, dkr))
 
     print("Starting Nginx")
