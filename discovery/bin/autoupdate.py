@@ -132,32 +132,35 @@ def update_load_balancer(zk, dkr, basepath, children, host_networks):
                 servers[server_name] = []
             servers[server_name].append(server)
 
+    os.makedirs('/etc/nginx/conf.d', exist_ok=True)
+    conf_file = open('/etc/nginx/conf.d/default.conf', mode='w')
+
     for name, server_list in servers.items():
         unique_ports = {}
 
-        print("upstream {} {{".format(name))
+        print("upstream {} {{".format(name), file=conf_file)
         for server in server_list:
             for port in server['ports']:
                 unique_ports[port] = None
                 weight = ""
                 if 'weight' in server:
                     weight = " weight=".format(server['weight'])
-                print("\tserver {}:{}{};".format(server['ip'], port, weight))
-        print("}")
+                print("\tserver {}:{}{};".format(server['ip'], port, weight), file=conf_file)
+        print("}", file=conf_file)
 
         # TODO: handle tcp -v- http
-        print("server {")
+        print("server {", file=conf_file)
         for port, _ignore in unique_ports.items():
-            print("\tlisten\t{};".format(port))
-        print("\tserver_name\t{}.{};".format(name, domain))
+            print("\tlisten\t{};".format(port), file=conf_file)
+        print("\tserver_name\t{}.{};".format(name, domain), file=conf_file)
         # TODO: configure logging better
-        print("\taccess_log\t/dev/stdout;")
+        print("\taccess_log\t/dev/stdout;", file=conf_file)
 
-        print("\tlocation / {")
-        print("\t\tproxy_pass   http://{};".format(name))
-        print("\t}")
+        print("\tlocation / {", file=conf_file)
+        print("\t\tproxy_pass   http://{};".format(name), file=conf_file)
+        print("\t}", file=conf_file)
 
-        print("}")
+        print("}", file=conf_file)
 
 
 def find_ip(zk_container, host_networks):
