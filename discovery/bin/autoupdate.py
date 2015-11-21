@@ -4,6 +4,7 @@ import sys
 import json
 import os
 import time
+import signal
 
 from kazoo.client import KazooClient
 
@@ -20,6 +21,9 @@ def main():
     print("Starting Dnsmasq")
     dnsmasq_process = subprocess.Popen(['dnsmasq', '-k', '--port=8053'], stdout=sys.stdout, stderr=sys.stderr)
     signal.signal(signal.SIGTERM, lambda s, f: on_sigterm(dnsmasq_process, zk, dkr))
+
+    print("Starting Nginx")
+    nginx_process = subprocess.Popen(['nginx'], stdout=sys.stdout, stderr=sys.stderr)
 
     zookeeper_connection_string = os.environ['ZOOKEEPER_CONNECTION_STRING']
     print("Connecting to Zookeeper: {}".format(zookeeper_connection_string))
@@ -40,7 +44,7 @@ def main():
         @zk.ChildrenWatch(BASE_PATH)
         def on_add(children):
             try:
-                update_load_balancer(zk, dkr, BASE_PATH, children, host_networks)
+                update_load_balancer(zk, nginx_process, BASE_PATH, children, host_networks)
             except Exception as e:
                 print("Error while updating load balancer: {}".format(e))
 
@@ -103,7 +107,7 @@ def get_and_normalize_networks(dkr):
     return result
 
 
-def update_load_balancer(zk, dkr, basepath, children, host_networks):
+def update_load_balancer(zk, nginx_process, basepath, children, host_networks):
     print("Zookeeper update: {}/{}".format(basepath, children))
 
     domain = os.getenv('DNS_DOMAIN', 'discovery')
@@ -161,6 +165,9 @@ def update_load_balancer(zk, dkr, basepath, children, host_networks):
         print("\t}", file=conf_file)
 
         print("}", file=conf_file)
+
+    # Signal the Nginx process to reload
+    nginx_process.send_signal(signal.SIGHUP)
 
 
 def find_ip(zk_container, host_networks):
